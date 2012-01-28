@@ -2,10 +2,13 @@ This is a mirror of http://www.vim.org/scripts/script.php?script_id=1572
 
 SQLComplete.vim is a plugin which uses the new Vim7 OMNI completion features (intellisense code completion).
 
-SQLComplete.vim version 4.0 is included in the Vim 7.0 release.
-SQLComplete.vim version 5.0 is included in the Vim 7.1 release.
-SQLComplete.vim version 6.0 is included in the Vim 7.2 release.
-SQLComplete.vim version 9.0 is included in the Vim 7.3 release.
+SQLComplete.vim version  4.0 is included in the Vim 7.0 release.
+SQLComplete.vim version  5.0 is included in the Vim 7.1 release.
+SQLComplete.vim version  6.0 is included in the Vim 7.2 release.
+SQLComplete.vim version  9.0 is included in the Vim 7.3 release.
+SQLComplete.vim version 10.0 is included in the Vim 7.3 release.
+SQLComplete.vim version 11.0 is included in the Vim 7.3 release.
+SQLComplete.vim version 12.0 is included in the Vim 7.3 release.
 
 What does it do:
 -----------------------
