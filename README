@@ -9,6 +9,9 @@ SQLComplete.vim version  9.0 is included in the Vim 7.3 release.
 SQLComplete.vim version 10.0 is included in the Vim 7.3 release.
 SQLComplete.vim version 11.0 is included in the Vim 7.3 release.
 SQLComplete.vim version 12.0 is included in the Vim 7.3 release.
+SQLComplete.vim version 13.0 is included in the Vim 7.3 release.
+SQLComplete.vim version 14.0 is included in the Vim 7.3 release.
+SQLComplete.vim version 15.0 is included in the Vim 7.3 release.
 
 What does it do:
 -----------------------
@@ -16,7 +19,7 @@ Completion for the SQL language includes statements, functions, keywords, operat
 :SQLSetType sqlanywhere
 :SQLSetType <Tab> will cycle through the installed dialects.
 
-It will also dynamically complete tables, procedures, views and column lists with data pulled directly from within a database.  It does this in conjunction with the dbext.vim "vimscript #356".  For detailed instructions and a tutorial see :h omni-sql-completion.
+It will also dynamically complete tables, procedures, views and column lists with data pulled directly from a database.  It does this in conjunction with the dbext.vim "vimscript #356".  For detailed instructions and a tutorial see :h omni-sql-completion.
 
 Existing instructions can be found within Vim7 using 
 :h sql.txt

@@ -1,8 +1,8 @@
 " Vim OMNI completion script for SQL
 " Language:    SQL
 " Maintainer:  David Fishburn <dfishburn dot vim at gmail dot com>
-" Version:     13.0
-" Last Change: 2012 Oct 17
+" Version:     15.0
+" Last Change: 2013 May 13
 " Homepage:    http://www.vim.org/scripts/script.php?script_id=1572
 " Usage:       For detailed help
 "              ":help sql.txt"
@@ -11,30 +11,45 @@
 
 " History
 "
-" Version 13.0
-"     - NF: When completing column lists or drilling into a table
-"       and g:omni_sql_include_owner is enabled, the 
-"       only the table name would be replaced with the column 
-"       list instead of the table name and owner (if specified).
-"     - NF: When completing column lists using table aliases
-"       and g:omni_sql_include_owner is enabled, account
-"       for the owner name when looking up the table
-"       list instead of the table name and owner (if specified).
-"     - BF: When completing column lists or drilling into a table
-"       and g:omni_sql_include_owner is enabled, the 
-"       column list could often not be found for the table.
-"     - BF: When OMNI popped up, possibly the wrong word 
-"       would be replaced for column and column list options.
+" TODO
+"     - Jonas Enberg - if no table is found when using column completion
+"       look backwards to a FROM clause and find the first table
+"       and complete it.
 "
-" Version 12.0
+" Version 15.0 (May 2013)
+"     - NF: Changed the SQL precached syntax items, omni_sql_precache_syntax_groups,
+"           to use regular expressions to pick up extended syntax group names.
+"           This requires an updated SyntaxComplete plugin version 13.0.
+"           If the required versions have not been installed, previous
+"           behaviour will not be impacted.
+"
+" Version 14.0 (Dec 2012)
+"     - BF: Added check for cpo
+"
+" Version 13.0 (Dec 2012)
+"     - NF: When completing column lists or drilling into a table
+"           and g:omni_sql_include_owner is enabled, the
+"           only the table name would be replaced with the column
+"           list instead of the table name and owner (if specified).
+"     - NF: When completing column lists using table aliases
+"           and g:omni_sql_include_owner is enabled, account
+"           for the owner name when looking up the table
+"           list instead of the table name and owner (if specified).
+"     - BF: When completing column lists or drilling into a table
+"           and g:omni_sql_include_owner is enabled, the
+"           column list could often not be found for the table.
+"     - BF: When OMNI popped up, possibly the wrong word
+"           would be replaced for column and column list options.
+"
+" Version 12.0 (Feb 2012)
 "     - Partial column name completion did not work when a table
 "       name or table alias was provided (Jonas Enberg).
 "     - Improved the handling of column completion.  First we match any
 "       columns from a previous completion.  If not matches are found, we
-"       consider the partial name to be a table or table alias for the 
+"       consider the partial name to be a table or table alias for the
 "       query and attempt to match on it.
 "
-" Version 11.0
+" Version 11.0 (Jan 2012)
 "     Added g:omni_sql_default_compl_type variable
 "         - You can specify which type of completion to default to
 "           when pressing <C-X><C-O>.  The entire list of available
@@ -57,7 +72,7 @@
 "         - Prepends error message with SQLComplete so you know who issued
 "           the error.
 "
-" Version 9.0
+" Version 9.0 (May 2010)
 "     This change removes some of the support for tables with spaces in their
 "     names in order to simplify the regexes used to pull out query table
 "     aliases for more robust table name and column name code completion.
@@ -68,10 +83,10 @@
 "     Incorrectly re-executed the g:ftplugin_sql_omni_key_right and g:ftplugin_sql_omni_key_left
 "     when drilling in and out of a column list for a table.
 "
-" Version 7.0
+" Version 7.0 (Jan 2010)
 "     Better handling of object names
 "
-" Version 6.0
+" Version 6.0 (Apr 2008)
 "     Supports object names with spaces "my table name"
 "
 " Set completion with CTRL-X CTRL-O to autoloaded function.
@@ -88,7 +103,9 @@ endif
 if exists('g:loaded_sql_completion')
     finish
 endif
-let g:loaded_sql_completion = 130
+let g:loaded_sql_completion = 150
+let s:keepcpo= &cpo
+set cpo&vim
 
 " Maintains filename of dictionary
 let s:sql_file_table        = ""
@@ -105,12 +122,14 @@ let s:syn_value             = []
 " Used in conjunction with the syntaxcomplete plugin
 let s:save_inc              = ""
 let s:save_exc              = ""
-if exists('g:omni_syntax_group_include_sql')
-    let s:save_inc = g:omni_syntax_group_include_sql
+if !exists('g:omni_syntax_group_include_sql')
+    let g:omni_syntax_group_include_sql = ''
 endif
-if exists('g:omni_syntax_group_exclude_sql')
-    let s:save_exc = g:omni_syntax_group_exclude_sql
+if !exists('g:omni_syntax_group_exclude_sql')
+    let g:omni_syntax_group_exclude_sql = ''
 endif
+let s:save_inc = g:omni_syntax_group_include_sql
+let s:save_exc = g:omni_syntax_group_exclude_sql
 
 " Used with the column list
 let s:save_prev_table       = ""
@@ -122,12 +141,12 @@ endif
 " Default syntax items to precache
 if !exists('g:omni_sql_precache_syntax_groups')
     let g:omni_sql_precache_syntax_groups = [
-                \ 'syntax',
-                \ 'sqlKeyword',
-                \ 'sqlFunction',
-                \ 'sqlOption',
-                \ 'sqlType',
-                \ 'sqlStatement'
+                \ 'syntax\w*',
+                \ 'sqlKeyword\w*',
+                \ 'sqlFunction\w*',
+                \ 'sqlOption\w*',
+                \ 'sqlType\w*',
+                \ 'sqlStatement\w*'
                 \ ]
 endif
 " Set ignorecase to the ftplugin standard
@@ -154,7 +173,7 @@ if !exists('g:omni_sql_default_compl_type')
 endif
 
 " This function is used for the 'omnifunc' option.
-" It is called twice by omni and it is responsible 
+" It is called twice by omni and it is responsible
 " for returning the completion list of items.
 " But it must also determine context of what to complete
 " and what to "replace" with the completion.
@@ -203,9 +222,9 @@ function! sqlcomplete#Complete(findstart, base)
                 " If lastword has already been set for column completion
                 " break from the loop, since we do not also want to pickup
                 " a table name if it was also supplied.
-                " Unless g:omni_sql_include_owner == 1, then we can 
+                " Unless g:omni_sql_include_owner == 1, then we can
                 " include the ownername.
-                if lastword != -1 && compl_type == 'column' 
+                if lastword != -1 && compl_type == 'column'
                             \ && g:omni_sql_include_owner == 0
                     break
                 endif
@@ -403,9 +422,9 @@ function! sqlcomplete#Complete(findstart, base)
                 let list_type     = 'csv'
             endif
 
-            " If we are including the OWNER for the objects, then for 
-            " table completion, if we have it, it should be included 
-            " as there can be the same table names in a database yet 
+            " If we are including the OWNER for the objects, then for
+            " table completion, if we have it, it should be included
+            " as there can be the same table names in a database yet
             " with different owner names.
             if g:omni_sql_include_owner == 1 && owner != '' && table != ''
                 let compl_list  = s:SQLCGetColumns(owner.'.'.table, list_type)
@@ -616,19 +635,23 @@ function! s:SQLCGetSyntaxList(syn_group)
         " Return previously cached value
         let compl_list = s:syn_value[list_idx]
     else
+        let s:save_inc = g:omni_syntax_group_include_sql
+        let s:save_exc = g:omni_syntax_group_exclude_sql
+        let g:omni_syntax_group_include_sql = ''
+        let g:omni_syntax_group_exclude_sql = ''
+
         " Request the syntax list items from the
         " syntax completion plugin
         if syn_group == 'syntax'
             " Handle this special case.  This allows the user
             " to indicate they want all the syntax items available,
             " so do not specify a specific include list.
-            let g:omni_syntax_group_include_sql = ''
+            let syn_value                       = syntaxcomplete#OmniSyntaxList()
         else
             " The user has specified a specific syntax group
             let g:omni_syntax_group_include_sql = syn_group
+            let syn_value                       = syntaxcomplete#OmniSyntaxList(syn_group)
         endif
-        let g:omni_syntax_group_exclude_sql = ''
-        let syn_value                       = syntaxcomplete#OmniSyntaxList()
         let g:omni_syntax_group_include_sql = s:save_inc
         let g:omni_syntax_group_exclude_sql = s:save_exc
         " Cache these values for later use
@@ -938,3 +961,7 @@ function! s:SQLCGetColumns(table_name, list_type)
 
     return table_cols
 endfunction
+"  Restore:
+let &cpo= s:keepcpo
+unlet s:keepcpo
+" vim: ts=4 fdm=marker
